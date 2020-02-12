@@ -10,20 +10,18 @@ SCORE_MAP = (100, 300, 800, 1600)
 class RectInfo(object):
     def __init__(self, x, y, color):
         self.x = x
-
-    self.y = y
-    self.color = color
+        self.y = y
+        self.color = color
 
 
 class HintBox(object):
     next_block = None
 
     def __init__(self, bg, block_size, position):
-        self._bg = bg;
-
-    self._x, self._y, self._width, self._height = position
-    self._block_size = block_size
-    self._bgcolor = [0, 0, 0]
+        self._bg = bg
+        self._x, self._y, self._width, self._height = position
+        self._block_size = block_size
+        self._bgcolor = [0, 0, 0]
 
     def take_block(self):
         block = self.next_block
@@ -68,30 +66,65 @@ class ScoreBox(object):
     db_file = 'tetris.db'
 
     def __init__(self, bg, block_size, position):
-        self._bg = bg;
-
-    self._x, self._y, self._width, self._height = position
-    self._block_size = block_size
-    self._bgcolor = [0, 0, 0]
-
-    if os.path.exists(self.db_file): self.high_score = pickle.load(open(self.db_file, 'rb'))
+        self._bg = bg
+        self._x, self._y, self._width, self._height = position
+        self._block_size = block_size
+        self._bgcolor = [0, 0, 0]
+        if os.path.exists(self.db_file):
+            self.high_score = pickle.load(open(self.db_file, 'rb'))
 
     def paint(self):
         myfont = pygame.font.Font(None, 36)
-
-    white = 255, 255, 255
-    textImage = myfont.render('High: %06d' % (self.high_score), True, white)
-    self._bg.blit(textImage, (self._x, self._y))
-    textImage = myfont.render('Score:%06d' % (self.total_score), True, white)
-    self._bg.blit(textImage, (self._x, self._y + 40))
+        white = 255, 255, 255
+        textImage = myfont.render('High: %06d' % (self.high_score), True, white)
+        self._bg.blit(textImage, (self._x, self._y))
+        textImage = myfont.render('Score:%06d' % (self.total_score), True, white)
+        self._bg.blit(textImage, (self._x, self._y + 40))
 
     def add_score(self, score):
         self.total_score += score
+        if self.total_score > self.high_score:
+            self.high_score = self.total_score
+        pickle.dump(self.high_score, open(self.db_file, 'wb+'))
 
-    if self.total_score > self.high_score:
-        self.high_score = self.total_score
-    pickle.dump(self.high_score, open(self.db_file, 'wb+'))
+class Block(object):
+    sx = 0
+    sy = 0
 
+    def __init__(self):
+        self.rect_arr = []
+
+    def get_rect_arr(self):  # 用于获取方块种的四个矩形列表
+        return self.rect_arr
+
+    def move(self, xdiff, ydiff):  # 用于移动方块的方法
+        self.sx += xdiff
+        self.sy += ydiff
+        self.new_rect_arr = []
+        for x, y in self.rect_arr:
+            self.new_rect_arr.append((x + xdiff, y + ydiff))
+        self.rect_arr = self.new_rect_arr
+
+    def can_move(self, xdiff, ydiff):
+        for x, y in self.rect_arr:
+            if y + ydiff >= 20: return False
+        if x + xdiff < 0 or x + xdiff >= 10: return False
+        return True
+
+    def change(self):
+        self.shape_id += 1  # 下一形态
+        if self.shape_id >= self.shape_num:
+            self.shape_id = 0
+
+        arr = self.get_shape()
+        new_arr = []
+        for x, y in arr:
+            if x + self.sx < 0 or x + self.sx >= 10:  # 变形不能超出左右边界
+                self.shape_id -= 1
+        if self.shape_id < 0: self.shape_id = self.shape_num - 1
+        return None
+        new_arr.append([x + self.sx, y + self.sy])
+        return new_arr
 
 class Panel(object):  # 用于绘制整个游戏窗口的版面
     rect_arr = []  # 已经落底下的方块
@@ -100,11 +133,10 @@ class Panel(object):  # 用于绘制整个游戏窗口的版面
     score_box = None
 
     def __init__(self, bg, block_size, position):
-        self._bg = bg;
-
-    self._x, self._y, self._width, self._height = position
-    self._block_size = block_size
-    self._bgcolor = [0, 0, 0]
+        self._bg = bg
+        self._x, self._y, self._width, self._height = position
+        self._block_size = block_size
+        self._bgcolor = [0, 0, 0]
 
     def add_block(self, block):
         for x, y in block.get_rect_arr():
@@ -209,62 +241,16 @@ class Panel(object):  # 用于绘制整个游戏窗口的版面
     pygame.draw.rect(self._bg, [255, 255, 255], [self._x + x * bz, self._y + y * bz, bz + 1, bz + 1], 1)
 
 
-class Block(object):
-    sx = 0
-    sy = 0
-
-    def __init__(self):
-        self.rect_arr = []
-
-    def get_rect_arr(self):  # 用于获取方块种的四个矩形列表
-        return self.rect_arr
-
-    def move(self, xdiff, ydiff):  # 用于移动方块的方法
-        self.sx += xdiff
-
-    self.sy += ydiff
-    self.new_rect_arr = []
-    for x, y in self.rect_arr:
-        self.new_rect_arr.append((x + xdiff, y + ydiff))
-    self.rect_arr = self.new_rect_arr
-
-    def can_move(self, xdiff, ydiff):
-        for x, y in self.rect_arr:
-            if y + ydiff >= 20: return False
-
-    if x + xdiff < 0 or x + xdiff >= 10: return False
-    return True
-
-    def change(self):
-        self.shape_id += 1  # 下一形态
-
-    if self.shape_id >= self.shape_num:
-        self.shape_id = 0
-
-    arr = self.get_shape()
-    new_arr = []
-    for x, y in arr:
-        if x + self.sx < 0 or x + self.sx >= 10:  # 变形不能超出左右边界
-            self.shape_id -= 1
-    if self.shape_id < 0: self.shape_id = self.shape_num - 1
-    return None
-
-    new_arr.append([x + self.sx, y + self.sy])
-
-    return new_arr
-
-
 class LongBlock(Block):
     shape_id = 0
     shape_num = 2
 
     def __init__(self, n=None):  # 两种形态
         super(LongBlock, self).__init__()
-
-    if n is None: n = random.randint(0, 1)
-    self.shape_id = n
-    self.rect_arr = self.get_shape()
-    self.color = (50, 180, 50)
+        if n is None: n = random.randint(0, 1)
+        self.shape_id = n
+        self.rect_arr = self.get_shape()
+        self.color = (50, 180, 50)
 
     def get_shape(self):
         return [(1, 0), (1, 1), (1, 2), (1, 3)] if self.shape_id == 0 else [(0, 2), (1, 2), (2, 2), (3, 2)]
@@ -276,9 +262,8 @@ class SquareBlock(Block):  # 一种形态
 
     def __init__(self, n=None):
         super(SquareBlock, self).__init__()
-
-    self.rect_arr = self.get_shape()
-    self.color = (0, 0, 255)
+        self.rect_arr = self.get_shape()
+        self.color = (0, 0, 255)
 
     def get_shape(self):
         return [(1, 1), (1, 2), (2, 1), (2, 2)]
@@ -290,11 +275,10 @@ class ZBlock(Block):  # 两种形态
 
     def __init__(self, n=None):
         super(ZBlock, self).__init__()
-
-    if n is None: n = random.randint(0, 1)
-    self.shape_id = n
-    self.rect_arr = self.get_shape()
-    self.color = (30, 200, 200)
+        if n is None: n = random.randint(0, 1)
+        self.shape_id = n
+        self.rect_arr = self.get_shape()
+        self.color = (30, 200, 200)
 
     def get_shape(self):
         return [(2, 0), (2, 1), (1, 1), (1, 2)] if self.shape_id == 0 else [(0, 1), (1, 1), (1, 2), (2, 2)]
@@ -306,11 +290,10 @@ class SBlock(Block):  # 两种形态
 
     def __init__(self, n=None):
         super(SBlock, self).__init__()
-
-    if n is None: n = random.randint(0, 1)
-    self.shape_id = n
-    self.rect_arr = self.get_shape()
-    self.color = (255, 30, 255)
+        if n is None: n = random.randint(0, 1)
+        self.shape_id = n
+        self.rect_arr = self.get_shape()
+        self.color = (255, 30, 255)
 
     def get_shape(self):
         return [(1, 0), (1, 1), (2, 1), (2, 2)] if self.shape_id == 0 else [(0, 2), (1, 2), (1, 1), (2, 1)]
@@ -322,11 +305,10 @@ class LBlock(Block):  # 四种形态
 
     def __init__(self, n=None):
         super(LBlock, self).__init__()
-
-    if n is None: n = random.randint(0, 3)
-    self.shape_id = n
-    self.rect_arr = self.get_shape()
-    self.color = (200, 200, 30)
+        if n is None: n = random.randint(0, 3)
+        self.shape_id = n
+        self.rect_arr = self.get_shape()
+        self.color = (200, 200, 30)
 
     def get_shape(self):
         if self.shape_id == 0:
@@ -345,11 +327,10 @@ class JBlock(Block):  # 四种形态
 
     def __init__(self, n=None):
         super(JBlock, self).__init__()
-
-    if n is None: n = random.randint(0, 3)
-    self.shape_id = n
-    self.rect_arr = self.get_shape()
-    self.color = (200, 100, 0)
+        if n is None: n = random.randint(0, 3)
+        self.shape_id = n
+        self.rect_arr = self.get_shape()
+        self.color = (200, 100, 0)
 
     def get_shape(self):
         if self.shape_id == 0:
@@ -368,11 +349,10 @@ class TBlock(Block):  # 四种形态
 
     def __init__(self, n=None):
         super(TBlock, self).__init__()
-
-    if n is None: n = random.randint(0, 3)
-    self.shape_id = n
-    self.rect_arr = self.get_shape()
-    self.color = (255, 0, 0)
+        if n is None: n = random.randint(0, 3)
+        self.shape_id = n
+        self.rect_arr = self.get_shape()
+        self.color = (255, 0, 0)
 
     def get_shape(self):
         if self.shape_id == 0:

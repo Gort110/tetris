@@ -114,7 +114,7 @@ class LBlock(Block):
             self.rect_arr = [(0, 0), (1, 0), (1, 1), (1, 2)]
         else:
             self.rect_arr = [(0, 1), (1, 1), (2, 1), (2, 0)]
-class JBlock(Block):
+
     def __init__(self, n=None):
         super().__init__()
         if n is None:
